@@ -1,0 +1,93 @@
+version: "3"
+services:
+  # Creating container PHP lumen main
+  lumen_main:
+    build:
+      context: ./lumen
+      dockerfile: Dockerfile
+    container_name: lumen_main
+    volumes:
+      - lumen-volume:/var/www/lumen
+    ports:
+      - "9120:9000"
+    links:
+      - rabbitmq
+      - mysql_lumen
+
+  # Creating container PHP email
+  lumen_email1:
+    build:
+      context: ./lumen-email1
+      dockerfile: Dockerfile
+    container_name: lumen_email1
+    volumes:
+      - lumen-email1-volume:/var/www/lumen-email1
+    ports:
+      - "9121:9000"
+    links:
+      - rabbitmq
+      - mysql_lumen
+
+  # Creating container PHP email
+  lumen_email2:
+    build:
+      context: ./lumen-email2
+      dockerfile: Dockerfile
+    container_name: lumen_email2
+    volumes:
+      - lumen-email2-volume:/var/www/lumen-email2
+    ports:
+      - "9122:9000"
+    links:
+      - rabbitmq
+      - mysql_lumen
+
+  # Creating container (Nginx)
+  nginx_lumen:
+    image: nginx:latest
+    container_name: nginx_lumen
+    ports:
+      - "9100:80"
+    volumes:
+      - ./image/nginx/conf.d/:/etc/nginx/conf.d/
+      - ./image/nginx/nginx.conf:/etc/nginx/nginx.conf
+    links:
+      - lumen_main
+      - lumen_email1
+      - lumen_email2
+
+  #Rabbit
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    hostname: rabbitmq
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./image/rabbitmq/data/:/var/lib/rabbitmq/
+      - ./image/rabbitmq/log/:/var/log/rabbitmq
+
+  #MySQL Service
+  mysql_lumen:
+    image: mysql:5.7
+    platform: linux/amd64
+    container_name: mysql_lumen
+    restart: unless-stopped
+    tty: true
+    expose:
+      - "3307"
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./image/mysql/data/:/var/lib/mysql/
+    command:
+      [
+        "--character-set-server=utf8",
+        "--collation-server=utf8_general_ci",
+      ]
+    environment:
+      MYSQL_DATABASE: lumendb
+      MYSQL_USER: hunghd
+      MYSQL_PASSWORD: hunghd
+      MYSQL_ROOT_PASSWORD: root

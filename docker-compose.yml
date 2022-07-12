@@ -1,0 +1,121 @@
+version: '3'
+
+services:
+
+  ####################################################################################################
+  # Creating container PHP
+  ####################################################################################################
+  php10:
+      container_name: php10
+      build: ./lumen
+      volumes:
+         - ./lumen/:/var/www/html
+      ports:
+          - "9120:9000"
+      links:
+        - rabbitmq
+        - mysql_lumen
+
+  php20:
+      container_name: php20
+      build: ./lumen-email1
+      volumes:
+        - ./lumen-email1/:/var/www/html
+      ports:
+          - "9121:9000"
+      links:
+        - rabbitmq
+        - mysql_lumen
+
+  php30:
+      container_name: php30
+      build: ./lumen-email2
+      volumes:
+         - ./lumen-email2/:/var/www/html
+      ports:
+          - "9122:9000"
+      links:
+        - rabbitmq
+        - mysql_lumen
+
+  ####################################################################################################
+  # Creating container (Nginx)
+  ####################################################################################################
+
+  nginx10:
+      container_name: nginx10
+      image: nginx:latest
+      ports:
+          - 6099:80
+      volumes:
+          - ./image/nginx/nginx-01.conf:/etc/nginx/nginx.conf
+      links:
+          - php10
+
+  nginx20:
+      container_name: nginx20
+      image: nginx:latest
+      ports:
+          - 6097:80
+      volumes:
+          - ./image/nginx/nginx-02.conf:/etc/nginx/nginx.conf
+      links:
+          - php20
+
+  nginx30:
+      container_name: nginx30
+      image: nginx:latest
+      ports:
+          - 6090:80
+      volumes:
+          - ./image/nginx/nginx-03.conf:/etc/nginx/nginx.conf
+      links:
+          - php30
+
+  nginx_proxy:
+      container_name: 'nginx_proxy'
+      image: nginx:latest
+      ports:
+          - 6098:80
+      volumes:
+          - ./image/nginx/nginx.proxy.conf:/etc/nginx/nginx.conf
+      links:
+          - nginx10
+          - nginx20
+          - nginx30
+
+  #Rabbit
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    hostname: rabbitmq
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./image/rabbitmq/data/:/var/lib/rabbitmq/
+      - ./image/rabbitmq/log/:/var/log/rabbitmq
+
+  #MySQL Service
+  mysql_lumen:
+    image: mysql:5.7
+    platform: linux/amd64
+    container_name: mysql_lumen
+    restart: unless-stopped
+    tty: true
+    expose:
+      - "3307"
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./image/mysql/data/:/var/lib/mysql/
+    command:
+      [
+        "--character-set-server=utf8",
+        "--collation-server=utf8_general_ci",
+      ]
+    environment:
+      MYSQL_DATABASE: lumendb
+      MYSQL_USER: hunghd
+      MYSQL_PASSWORD: hunghd
+      MYSQL_ROOT_PASSWORD: root
